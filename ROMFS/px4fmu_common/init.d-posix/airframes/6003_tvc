@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# @name Inverted Coaxial Servo Drone
+#
+# @type Coaxial
+#
+# @class Copter
+#
+# @maintainer Your Name <your.email@example.com>
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+param set-default MAV_TYPE 3 # Rocket
+
+PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
+PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=tvc}
+
+param set-default SIM_GZ_EN 1
+
+param set-default SENS_EN_GPSSIM 1
+param set-default SENS_EN_BAROSIM 0
+param set-default SENS_EN_MAGSIM 1
+
+
+# Configure as bicopter with servo tilt
+param set-default CA_AIRFRAME 12 # Specify custom airframe
+
+# To avoid disarm in the air
+param set COM_DISARM_LAND 0.0
