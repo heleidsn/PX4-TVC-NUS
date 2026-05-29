@@ -1,62 +1,75 @@
-# PX4 Drone Autopilot
+# PX4-TVC-NUS
 
-[![Releases](https://img.shields.io/github/release/PX4/PX4-Autopilot.svg)](https://github.com/PX4/PX4-Autopilot/releases) [![DOI](https://zenodo.org/badge/22634/PX4/PX4-Autopilot.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/PX4-Autopilot)
+A fork of [PX4-Autopilot](https://github.com/PX4/PX4-Autopilot) v1.16 for **TVC (Thrust Vectoring Control)** aircraft SITL simulation in Gazebo, used together with the ROS 2 controllers in the `TVC_ws` workspace.
 
-[![Build Targets](https://github.com/PX4/PX4-Autopilot/actions/workflows/build_all_targets.yml/badge.svg?branch=main)](https://github.com/PX4/PX4-Autopilot/actions/workflows/build_all_targets.yml) [![SITL Tests](https://github.com/PX4/PX4-Autopilot/workflows/SITL%20Tests/badge.svg?branch=master)](https://github.com/PX4/PX4-Autopilot/actions?query=workflow%3A%22SITL+Tests%22)
+## Purpose
 
-[![Discord Shield](https://discordapp.com/api/guilds/1022170275984457759/widget.png?style=shield)](https://discord.gg/dronecode)
+- Provide PX4 flight control and Gazebo simulation support for an inverted coaxial servo TVC drone
+- Launch SITL with airframe ID `6003` and load the `tvc` Gazebo model for simulation
+- Serve as a submodule of `TVC_ws` for integration with external LQR/PID control nodes
 
-This repository holds the [PX4](http://px4.io) flight control solution for drones, with the main applications located in the [src/modules](https://github.com/PX4/PX4-Autopilot/tree/main/src/modules) directory. It also contains the PX4 Drone Middleware Platform, which provides drivers and middleware to run drones.
+## Launch
 
-PX4 is highly portable, OS-independent and supports Linux, NuttX and MacOS out of the box.
+Build first (from the `PX4-TVC-NUS` directory):
 
-* Official Website: http://px4.io (License: BSD 3-clause, [LICENSE](https://github.com/PX4/PX4-Autopilot/blob/main/LICENSE))
-* [Supported airframes](https://docs.px4.io/main/en/airframes/airframe_reference.html) ([portfolio](https://px4.io/ecosystem/commercial-systems/)):
-  * [Multicopters](https://docs.px4.io/main/en/frames_multicopter/)
-  * [Fixed wing](https://docs.px4.io/main/en/frames_plane/)
-  * [VTOL](https://docs.px4.io/main/en/frames_vtol/)
-  * [Autogyro](https://docs.px4.io/main/en/frames_autogyro/)
-  * [Rover](https://docs.px4.io/main/en/frames_rover/)
-  * many more experimental types (Blimps, Boats, Submarines, High Altitude Balloons, Spacecraft, etc)
-* Releases: [Downloads](https://github.com/PX4/PX4-Autopilot/releases)
+```bash
+make px4_sitl
+```
 
-## Releases
+Start the TVC SITL simulation:
 
-Release notes and supporting information for PX4 releases can be found on the [Developer Guide](https://docs.px4.io/main/en/releases/).
+```bash
+PX4_SYS_AUTOSTART=6003 PX4_SIM_MODEL=tvc PX4_GZ_WORLD=default ./build/px4_sitl_default/bin/px4
+```
 
-## Building a PX4 based drone, rover, boat or robot
+| Environment Variable | Description |
+|---|---|
+| `PX4_SYS_AUTOSTART=6003` | Select airframe `6003_tvc` |
+| `PX4_SIM_MODEL=tvc` | Load the TVC Gazebo model |
+| `PX4_GZ_WORLD=default` | Use the default Gazebo world |
 
-The [PX4 User Guide](https://docs.px4.io/main/en/) explains how to assemble [supported vehicles](https://docs.px4.io/main/en/airframes/airframe_reference.html) and fly drones with PX4. See the [forum and chat](https://docs.px4.io/main/en/#getting-help) if you need help!
+## Key Parameter Changes
 
+These parameters are adjusted for TVC operation with external ROS 2 control. Apply them in QGroundControl or via `param set` after startup.
 
-## Changing Code and Contributing
+### Control Allocator & Flight Behavior
 
-This [Developer Guide](https://docs.px4.io/main/en/development/development.html) is for software developers who want to modify the flight stack and middleware (e.g. to add new flight modes), hardware integrators who want to support new flight controller boards and peripherals, and anyone who wants to get PX4 working on a new (unsupported) airframe/vehicle.
+| Parameter | Default | TVC Value | Description |
+|---|---|---|---|
+| `CA_SP0_ANG1` | 90 deg | 140 deg | Servo tilt angle for thrust vectoring |
+| `CA_SP0_COUNT` | 2 | 3 | Number of servos on the tilt mechanism |
+| `MC_AIRMODE` | Roll/Pitch | Disabled | Disable airmode for cleaner thrust control |
+| `COM_DISARM_PRFLT` | 0.0 s | 10.0 s | Delay auto-disarm after preflight checks |
+| `FD_ESCS_EN` | Disabled | Enabled | Enable ESC failure detection |
+| `FD_FAIL_R` | 180 deg | 60 deg | Roll failure detection threshold |
 
-Developers should read the [Guide for Contributions](https://docs.px4.io/main/en/contribute/).
-See the [forum and chat](https://docs.px4.io/main/en/#getting-help) if you need help!
+### Simulation & Airframe
 
+| Parameter | Default | TVC Value | Description |
+|---|---|---|---|
+| `SYS_AUTOSTART` | 6002 | 6003 | Switch to the TVC airframe |
+| `SIM_GZ_EC_FUNC1` | Counter-clockwise Rotor | Disabled | Disable direct Gazebo CCW motor mapping |
+| `SIM_GZ_EC_FUNC2` | Clockwise Rotor | Disabled | Disable direct Gazebo CW motor mapping |
+| `SIM_GZ_SV_FUNC1` | Servo 1 | Disabled | Disable direct Gazebo servo 1 mapping |
+| `SIM_GZ_SV_FUNC2` | Servo 2 | Disabled | Disable direct Gazebo servo 2 mapping |
 
-## Weekly Dev Call
+Disabling the Gazebo motor/servo function mappings allows actuation to be handled externally by the ROS 2 controller instead of PX4's built-in mixer output.
 
-The PX4 Dev Team syncs up on a [weekly dev call](https://docs.px4.io/main/en/contribute/).
+## Changes from Upstream PX4
 
-> **Note** The dev call is open to all interested developers (not just the core dev team). This is a great opportunity to meet the team and contribute to the ongoing development of the platform. It includes a QA session for newcomers. All regular calls are listed in the [Dronecode calendar](https://www.dronecode.org/calendar/).
+1. **Added airframe configuration `6003_tvc`**
+   - Path: `ROMFS/px4fmu_common/init.d-posix/airframes/6003_tvc`
+   - Configured for Gazebo Harmonic (`gz`) simulation with the `tvc` model loaded by default
+   - Sets `MAV_TYPE=3` (Rocket) and `CA_AIRFRAME=12` (custom bicopter with servo tilt)
+   - Enables GPS/magnetometer simulation, disables barometer simulation; disables auto-disarm on landing (`COM_DISARM_LAND=0`)
 
+2. **Added TVC Gazebo simulation model**
+   - Path: `Tools/simulation/gz/models/tvc/`
+   - Includes SDF model files, model config, and propeller meshes
+   - Models an inverted coaxial TVC aircraft with servo gimbal, dual motors, and IMU/GPS/magnetometer sensors
 
-## Maintenance Team
+3. **Vendored `Tools/simulation/gz` as regular files**
+   - Upstream uses this directory as a git submodule; it is now vendored directly to allow in-repo maintenance of the custom TVC model
 
-See the latest list of maintainers on [MAINTAINERS](MAINTAINERS.md) file at the root of the project.
-
-For the latest stats on contributors please see the latest stats for the Dronecode ecosystem in our project dashboard under [LFX Insights](https://insights.lfx.linuxfoundation.org/foundation/dronecode). For information on how to update your profile and affiliations please see the following support link on how to [Complete Your LFX Profile](https://docs.linuxfoundation.org/lfx/my-profile/complete-your-lfx-profile). Dronecode publishes a yearly snapshot of contributions and achievements on its [website under the Reports section](https://dronecode.org).
-
-## Supported Hardware
-
-For the most up to date information, please visit [PX4 User Guide > Autopilot Hardware](https://docs.px4.io/main/en/flight_controller/).
-
-## Project Governance
-
-The PX4 Autopilot project including all of its trademarks is hosted under [Dronecode](https://www.dronecode.org/), part of the Linux Foundation.
-
-<a href="https://www.dronecode.org/" style="padding:20px" ><img src="https://dronecode.org/wp-content/uploads/sites/24/2020/08/dronecode_logo_default-1.png" alt="Dronecode Logo" width="110px"/></a>
-<div style="padding:10px">&nbsp;</div>
+4. **Registered airframe in the build system**
+   - Added `6003_tvc` to `ROMFS/px4fmu_common/init.d-posix/airframes/CMakeLists.txt`
